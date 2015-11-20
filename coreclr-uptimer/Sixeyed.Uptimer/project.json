@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0-*",
+  "description": "Sixeyed.Uptimer Console Application",
+  "authors": [ "" ],
+  "tags": [ "" ],
+  "projectUrl": "",
+  "licenseUrl": "",
+  "tooling": {
+    "defaultNamespace": "Sixeyed.Uptimer"
+  },
+
+  "dependencies": {
+  },
+
+  "commands": {
+    "Sixeyed.Uptimer": "Sixeyed.Uptimer"
+  },
+
+  "frameworks": {
+    "dnxcore50": {
+      "dependencies": {
+        "Microsoft.CSharp": "4.0.1-beta-23516",
+        "System.Collections": "4.0.11-beta-23516",
+        "System.Console": "4.0.0-beta-23516",
+        "System.Linq": "4.0.1-beta-23516",
+        "System.Threading": "4.0.11-beta-23516",
+        "WindowsAzure.Storage": "6.1.1-preview",
+        "System.Net.Http": "4.0.1-beta-23516"
+      }
+    }
+  }
+}
