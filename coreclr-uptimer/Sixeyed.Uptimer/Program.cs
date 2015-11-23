@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Sixeyed.Uptimer
@@ -14,28 +15,50 @@ namespace Sixeyed.Uptimer
     public class Program
     {
 
+        private static string _StorageConnectionString;
+        private static string _Url;
+
         public static void Main(string[] args)
         {
-            var storageConnectionString = Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING");
-            var url = args[0];
+            _StorageConnectionString = Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING");
+            _Url = args[0];
+            var frequency = args[1];
+                       
+            var timer = new Timer(async (s)=> await PingUrl(s), null, TimeSpan.Zero, TimeSpan.Parse(frequency));
 
-            var stopwatch = Stopwatch.StartNew();
-            var response = GetResponse(url).Result;
-            var result = SaveResponse(storageConnectionString, response, stopwatch.ElapsedMilliseconds).Result;
-
-            Console.WriteLine("Done. Took: {0}ms, success: {1}", stopwatch.ElapsedMilliseconds, result);
+            Console.ReadLine();
         }
 
-        private static async Task<HttpResponseMessage> GetResponse(string url)
+        private static async Task PingUrl(object state)
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            using (var client = new HttpClient())
+            var stopwatch = Stopwatch.StartNew();
+            var response = await GetResponse();
+            if (response != null)
             {
-                return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                await SaveResponse(_StorageConnectionString, response, stopwatch.ElapsedMilliseconds);
+            }
+
+            Console.WriteLine("Saved ping result. URL: {0}. Took: {1}ms", _Url, stopwatch.ElapsedMilliseconds);
+        }
+
+        private static async Task<HttpResponseMessage> GetResponse()
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, _Url);
+                using (var client = new HttpClient())
+                {
+                    return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                }
+            }
+            catch (Exception ex)
+            {
+                //TODO - logging
+                return null;
             }
         }
 
-        private static async Task<bool> SaveResponse(string storageConnectionString, HttpResponseMessage response, long duration)
+        private static async Task SaveResponse(string storageConnectionString, HttpResponseMessage response, long duration)
         {
             var content = string.Format("{0}\t{1}\t{2}\t{3}\n", response.Headers.Date, (int)response.StatusCode, response.ReasonPhrase, duration);
             var md5 = Md5Hash(content);
@@ -57,12 +80,10 @@ namespace Sixeyed.Uptimer
                 }
 
                 await AppendToBlob(blockBlob, content, md5);
-
-                return true;
             }
             catch (Exception ex)
             {
-                return false;
+                //TODO - logging
             }
         }
 
@@ -93,6 +114,10 @@ namespace Sixeyed.Uptimer
                 var blockIds = blockList.Select(x => x.Name).ToList();
                 blockIds.Add(blockId);
                 await blockBlob.PutBlockListAsync(blockIds, access, options, context);
+            }
+            catch(Exception ex)
+            {
+                //TODO - logging
             }
             finally
             {
